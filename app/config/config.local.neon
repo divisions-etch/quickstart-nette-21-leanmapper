@@ -1,0 +1,26 @@
+parameters:
+
+nette:
+	database:
+		class: \DibiConnection
+		dsn: 'mysql:host=localhost;dbname=test'
+		user:
+		password:
+		options:
+			lazy: yes
+
+dibi:
+	hostname: localhost
+	username: root
+	password: ***
+	database: todo
+	profiler: true
+	lazy: true
+
+services:
+
+	taskRepository: Model\Repository\TaskRepository
+	userRepository: Model\Repository\UserRepository
+	listRepository: Model\Repository\EListRepository
+
+factories:
