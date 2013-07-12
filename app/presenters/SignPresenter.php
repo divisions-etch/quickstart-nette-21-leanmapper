@@ -1,8 +1,5 @@
 <?php
 
-namespace App;
-
-use Nette;
 use Nette\Application\UI\Form;
 
 

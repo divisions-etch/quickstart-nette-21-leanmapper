@@ -1,10 +1,5 @@
 <?php
 
-namespace App;
-
-use Nette;
-
-
 class HomepagePresenter extends BasePresenter{
 
 	/** @var \Model\Repository\TaskRepository */

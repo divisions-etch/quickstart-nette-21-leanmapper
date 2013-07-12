@@ -1,7 +1,5 @@
 <?php
 
-namespace App;
-
 use Nette\Application\UI\Form;
 use Nette\DateTime;
 
