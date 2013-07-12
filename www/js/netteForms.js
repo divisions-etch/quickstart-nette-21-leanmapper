@@ -60,9 +60,6 @@ Nette.getValue = function(elem) {
 	} else if (elem.type === 'radio') {
 		return Nette.getValue(elem.form.elements[elem.name].nodeName ? [elem] : elem.form.elements[elem.name]);
 
-	} else if (elem.type === 'file') {
-		return elem.files || elem.value;
-
 	} else {
 		return elem.value.replace("\r", '').replace(/^\s+|\s+$/g, '');
 	}
@@ -98,11 +95,7 @@ Nette.validateControl = function(elem, rules, onlyCheck) {
 				continue;
 			}
 			if (!onlyCheck) {
-				var arr = Nette.isArray(rule.arg) ? rule.arg : [rule.arg];
-				var message = rule.msg.replace(/%(value|\d+)/g, function(foo, m) {
-					return Nette.getValue(m === 'value' ? el : elem.form.elements[arr[m].control]);
-				});
-				Nette.addError(el, message);
+				Nette.addError(el, rule.msg.replace('%value', Nette.getValue(el)));
 			}
 			return false;
 		}
@@ -172,13 +165,7 @@ Nette.validateRule = function(elem, op, arg) {
 	op = op.replace('::', '_');
 	op = op.replace(/\\/g, '');
 
-	var arr = Nette.isArray(arg) ? arg.slice(0) : [arg];
-	for (var i = 0, len = arr.length; i < len; i++) {
-		if (arr[i] && arr[i].control) {
-			arr[i] = Nette.getValue(elem.form.elements[arr[i].control]);
-		}
-	}
-	return Nette.validators[op] ? Nette.validators[op](elem, Nette.isArray(arg) ? arr : arr[0], val) : null;
+	return Nette.validators[op] ? Nette.validators[op](elem, arg, val) : null;
 };
 
 
@@ -197,7 +184,7 @@ Nette.validators = {
 		}
 		arg = Nette.isArray(arg) ? arg : [arg];
 		for (var i = 0, len = arg.length; i < len; i++) {
-			if (val == arg[i]) {
+			if (val == (arg[i].control ? Nette.getValue(elem.form.elements[arg[i].control]) : arg[i])) {
 				return true;
 			}
 		}
@@ -253,17 +240,6 @@ Nette.validators = {
 
 	submitted: function(elem, arg, val) {
 		return elem.form['nette-submittedBy'] === elem;
-	},
-
-	fileSize: function(elem, arg, val) {
-		if (window.FileList) {
-			for (var i = 0; i < val.length; i++) {
-				if (val[i].size > arg) {
-					return false;
-				}
-			}
-			return true;
-		}
 	}
 };
 
@@ -366,15 +342,8 @@ Nette.toggle = function(id, visible) {
 Nette.initForm = function(form) {
 	form.noValidate = 'novalidate';
 
-	Nette.addEvent(form, 'submit', function(e) {
-		if (!Nette.validateForm(form)) {
-			if (e && e.stopPropagation) {
-				e.stopPropagation();
-			} else if (window.event) {
-				event.cancelBubble = true;
-			}
-			return false;
-		}
+	Nette.addEvent(form, 'submit', function() {
+		return Nette.validateForm(form);
 	});
 
 	Nette.addEvent(form, 'click', function(e) {
@@ -384,6 +353,23 @@ Nette.initForm = function(form) {
 	});
 
 	Nette.toggleForm(form, true);
+
+	if (/MSIE/.exec(navigator.userAgent)) {
+		var labels = {},
+			wheelHandler = function() { return false; },
+			clickHandler = function() { document.getElementById(this.htmlFor).focus(); return false; };
+
+		for (i = 0, elms = form.getElementsByTagName('label'); i < elms.length; i++) {
+			labels[elms[i].htmlFor] = elms[i];
+		}
+
+		for (i = 0, elms = form.getElementsByTagName('select'); i < elms.length; i++) {
+			Nette.addEvent(elms[i], 'mousewheel', wheelHandler); // prevents accidental change in IE
+			if (labels[elms[i].htmlId]) {
+				Nette.addEvent(labels[elms[i].htmlId], 'click', clickHandler); // prevents deselect in IE 5 - 6
+			}
+		}
+	}
 };
 
 
@@ -400,19 +386,3 @@ Nette.addEvent(window, 'load', function() {
 		Nette.initForm(document.forms[i]);
 	}
 });
-
-
-/**
- * Converts string to web safe characters [a-z0-9-] text.
- */
-Nette.webalize = function(s) {
-	s = s.toLowerCase();
-	var res = '', i, ch;
-	for (i = 0; i < s.length; i++) {
-		ch = Nette.webalizeTable[s.charAt(i)];
-		res += ch ? ch : s.charAt(i);
-	}
-	return res.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-};
-
-Nette.webalizeTable = {\u00e1: 'a', \u010d: 'c', \u010f: 'd', \u00e9: 'e', \u011b: 'e', \u00ed: 'i', \u0148: 'n', \u00f3: 'o', \u0159: 'r', \u0161: 's', \u0165: 't', \u00fa: 'u', \u016f: 'u', \u00fd: 'y', \u017e: 'z'};
